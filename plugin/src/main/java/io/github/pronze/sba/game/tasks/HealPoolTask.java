@@ -25,10 +25,11 @@ public class HealPoolTask extends BaseGameTask implements Listener {
   }
 
   @EventHandler(priority = EventPriority.LOWEST)
-  public void onAsyncNPCInteract(PlayerUseUnknownEntityEvent event) {
-    if (event.isAsynchronous()) {
-      return;
-    }
+  public void onScreamingSandalCrash(org.bukkit.event.Event event) {
+      if (event.getClass().getSimpleName().equals("PlayerUseUnknownEntityEvent")) {
+          if (event.isAsynchronous()) {
+          }
+      }
   }
 
   @Override
