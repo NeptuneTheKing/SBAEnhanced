@@ -181,6 +181,7 @@ public class SBAConfig implements IConfigurator {
                     .section("upgrades")
                     .key("timer-upgrades-enabled").defValue(true)
                     .key("show-upgrade-message").defValue(true)
+                    .key("heal-pool-range").defValue(15)
                     .key("trap-detection-range").defValue(7)
                     .key("multiplier").defValue(0.25)
                     .section("limit")
