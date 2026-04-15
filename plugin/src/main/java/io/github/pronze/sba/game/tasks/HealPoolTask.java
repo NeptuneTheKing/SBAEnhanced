@@ -6,28 +6,38 @@ import org.bukkit.potion.PotionEffectType;
 import org.screamingsandals.bedwars.Main;
 
 public class HealPoolTask extends BaseGameTask {
-    private final double radius;
+  private final double radiusSquared;
 
-    public HealPoolTask() {
-        radius = Math.pow(SBAConfig.getInstance().node("upgrades", "trap-detection-range").getInt(7), 2);
+  public HealPoolTask() {
+
+    int range = SBAConfig.getInstance().node("upgrades", "heal-pool-range").getInt(15);
+    this.radiusSquared = (double) range * range;
+  }
+
+  @Override
+  public void run() {
+
+    if (!arena.getStorage().arePoolEnabled()) {
+      return;
     }
 
-    @Override
-    public void run() {
-        if (!arena.getStorage().arePoolEnabled()) {
-            return;
-        }
+    arena.getGame().getRunningTeams().forEach(team -> {
 
-        arena.getGame().getRunningTeams()
-                .stream()
-                .filter(arena.getStorage()::arePoolEnabled)
-                .forEach(team -> team.getConnectedPlayers()
-                        .stream()
-                        .filter(player -> !Main.getPlayerGameProfile(player).isSpectator)
-                        .forEach(player -> {
-                            if (arena.getStorage().getTargetBlockLocation(team).orElseThrow().distanceSquared(player.getLocation()) <= radius) {
-                                player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30, 1));
-                            }
-                        }));
-    }
+      if (!arena.getStorage().arePoolEnabled(team)) {
+        return;
+      }
+
+      arena.getStorage().getTargetBlockLocation(team).ifPresent(targetLoc -> {
+        team.getConnectedPlayers().stream()
+        .filter(player -> !Main.getPlayerGameProfile(player).isSpectator)
+        .forEach(player -> {
+
+          if (targetLoc.distanceSquared(player.getLocation()) <= radiusSquared) {
+
+            player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30, 1), true);
+          }
+        });
+      });
+    });
+  }
 }
