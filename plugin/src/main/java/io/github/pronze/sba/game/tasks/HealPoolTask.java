@@ -15,23 +15,19 @@ public class HealPoolTask extends BaseGameTask implements Listener {
   private final double radiusSquared;
 
   public HealPoolTask() {
-
     int range = SBAConfig.getInstance().node("upgrades", "heal-pool-range").getInt(7);
     this.radiusSquared = (double) range * range;
 
     try {
       JavaPlugin plugin = JavaPlugin.getProvidingPlugin(HealPoolTask.class);
       Bukkit.getPluginManager().registerEvents(this, plugin);
-    } catch (Exception ignored) {
-
-    }
+    } catch (Exception ignored) {}
   }
 
   @EventHandler(priority = EventPriority.LOWEST)
   public void onAsyncNPCInteract(PlayerUseUnknownEntityEvent event) {
-
     if (event.isAsynchronous()) {
-      event.setCancelled(true);
+      return;
     }
   }
 
@@ -51,7 +47,6 @@ public class HealPoolTask extends BaseGameTask implements Listener {
         .filter(player -> !Main.getPlayerGameProfile(player).isSpectator)
         .forEach(player -> {
           if (targetLoc.distanceSquared(player.getLocation()) <= radiusSquared) {
-
             player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30, 1), true);
           }
         });
