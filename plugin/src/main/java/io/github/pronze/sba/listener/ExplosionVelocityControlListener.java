@@ -30,133 +30,135 @@ import java.util.Set;
 
 @Service
 public class ExplosionVelocityControlListener implements Listener {
-    private final Map<Player, BukkitTask> explosionAffectedPlayers = new HashMap<>();
+  private final Map < Player, String > playerJumpType = new HashMap < > ();
+  private final Map < Player, BukkitTask > explosionAffectedTasks = new HashMap < > ();
 
-    @OnPostEnable
-    public void postEnable() {
-        if(SBA.isBroken())return;
-        SBA.getInstance().registerListener(this);
-    }
+  @OnPostEnable
+  public void postEnable() {
+    if (SBA.isBroken()) return;
+    SBA.getInstance().registerListener(this);
+  }
 
-    @EventHandler
-    public void onPlayerDamage(EntityDamageEvent event) {
-        if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
-            final var entity = event.getEntity();
-            if (entity instanceof Player) {
-                final var player = (Player) entity;
-                if (explosionAffectedPlayers.containsKey(player)) {
-                    event.setDamage(
-                            SBAConfig.getInstance().node("tnt-fireball-jumping", "fall-damage").getDouble(3.0D));
-                    Logger.trace("Landing tnt jump from fall damage", player);
-                    endTntJump(player);
-                }
-            }
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onPlayerDamage(EntityDamageEvent event) {
+    if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+      final
+      var entity = event.getEntity();
+      if (entity instanceof Player) {
+        final
+        var player = (Player) entity;
+
+        if (playerJumpType.containsKey(player)) {
+          String configPath = playerJumpType.get(player);
+
+          double damageValue = SBAConfig.getInstance()
+            .node(configPath, "fall-damage")
+            .getDouble(3.0D);
+
+          event.setDamage(damageValue);
+
+          Logger.trace("Landing " + configPath + " from fall damage", player);
+          endTntJump(player);
         }
+      }
     }
+  }
 
-    private void endTntJump(Player player) {
-        BukkitTask potentialTask = explosionAffectedPlayers.get(player);
-        if (potentialTask != null)
-            potentialTask.cancel();
-        explosionAffectedPlayers.remove(player);
-        AntiCheatIntegration.getInstance().tntJumpLanding(player);
+  private void endTntJump(Player player) {
+    BukkitTask potentialTask = explosionAffectedTasks.get(player);
+    if (potentialTask != null) {
+      potentialTask.cancel();
     }
+    explosionAffectedTasks.remove(player);
+    playerJumpType.remove(player);
 
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onExplode(EntityExplodeEvent event) {
-        final var explodedEntity = event.getEntity();
-        // }
-        // @EventHandler(priority = EventPriority.LOWEST)
-        // public void onExplode(EntityDamageByEntityEvent event) {
-        // final var explodedEntity = event.getDamager();
+    AntiCheatIntegration.getInstance().tntJumpLanding(player);
+  }
 
-        if (explodedEntity instanceof Explosive) {
-            if (Version.isVersion(1, 20, 3)) {
-                var entityKey = explodedEntity.getType().getKey();
-                if ("minecraft".equals(entityKey.getNamespace()) && ("wind_charge".equals(entityKey.getKey()) || "breeze_wind_charge".equals(entityKey.getKey()))) {
-                    return; // Ignore wind charges
-                }
-            }
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onExplode(EntityExplodeEvent event) {
+    final
+    var explodedEntity = event.getEntity();
 
-            final var detectionDistance = SBAConfig.getInstance().node("tnt-fireball-jumping", "detection-distance")
-                    .getDouble(5.0D);
+    if (explodedEntity instanceof Explosive) {
+      if (Version.isVersion(1, 20, 3)) {
+        var entityKey = explodedEntity.getType().getKey();
+        if ("minecraft".equals(entityKey.getNamespace()) && ("wind_charge".equals(entityKey.getKey()) || "breeze_wind_charge".equals(entityKey.getKey()))) {
+          return;
 
-            explodedEntity.getWorld()
-                    .getNearbyEntities(explodedEntity.getLocation(), detectionDistance, detectionDistance,
-                            detectionDistance)
-                    .stream()
-                    .filter(entity -> !entity.equals(explodedEntity))
-                    .forEach(entity -> {
-                        Vector vector = entity
-                                .getLocation()
-                                .clone()
-                                .toVector()
-                                .subtract(explodedEntity.getLocation().clone()
-                                        .add(0, SBAConfig.getInstance().node("tnt-fireball-jumping",
-                                                "acceleration-y")
-                                                .getDouble(1.0), 0)
-                                        .toVector())
-                                .normalize();
-                        Logger.trace("{}", vector);
-                        vector.setY(vector.getY()
-                                / SBAConfig.getInstance().node("tnt-fireball-jumping", "reduce-y").getDouble(2.0));
-                        if (!Double.isFinite(vector.getY())) {
-                            vector.setY(0);
-                        }
-                        if (!Double.isFinite(vector.getX())) {
-                            vector.setX(0);
-                        }
-                        if (!Double.isFinite(vector.getZ())) {
-                            vector.setZ(0);
-                        }
-                        vector.multiply(SBAConfig.getInstance().node("tnt-fireball-jumping", "launch-multiplier")
-                                .getDouble(4.0));
-
-                        if (entity instanceof Player) {
-                            final var player = (Player) entity;
-                            if (player.getGameMode() == GameMode.SPECTATOR ||
-                             !Main.isPlayerInGame(player)) {
-                             return;
-                            }
-                            // vector.add(new Vector(player.getEyeLocation().getDirection().getX(), 0,
-                            // player.getEyeLocation().getDirection().getZ()));
-
-                            AntiCheatIntegration.getInstance().beginTntJump(player);
-                            player.setVelocity(vector.add(player.getVelocity()));
-                            explosionAffectedPlayers.put(player, startTask(player));
-                            return;
-                        }
-
-                        if (Main.getInstance().isEntityInGame(entity)) {
-                            entity.setVelocity(vector);
-                        }
-                    });
         }
-    }
+      }
 
-    public BukkitTask startTask(Player player) {
-        BukkitTask previousTask = explosionAffectedPlayers.get(player);
-        if (previousTask != null)
-            previousTask.cancel();
-        return new BukkitRunnable() {
-            boolean onGround = false;
-            int count = 0;
+      String configPath = (explodedEntity instanceof Fireball) ? "fireball-jumping" : "tnt-jumping";
 
-            @Override
-            public void run() {
-                if (player.isOnGround()) {
-                    onGround = true;
-                }
-                if (onGround) {
-                    count++;
-                }
-                if (count > 3) {
-                    this.cancel();
-                    Logger.trace("Landing tnt jump from being on the ground for 1.5sec", player);
+      final
+      var detectionDistance = SBAConfig.getInstance().node(configPath, "detection-distance")
+        .getDouble(5.0D);
 
-                    endTntJump(player);
-                }
+      explodedEntity.getWorld()
+        .getNearbyEntities(explodedEntity.getLocation(), detectionDistance, detectionDistance, detectionDistance)
+        .stream()
+        .filter(entity -> !entity.equals(explodedEntity))
+        .forEach(entity -> {
+          Vector vector = entity.getLocation().clone().toVector()
+          .subtract(explodedEntity.getLocation().clone()
+            .add(0, SBAConfig.getInstance().node(configPath, "acceleration-y").getDouble(1.0), 0)
+            .toVector())
+          .normalize();
+
+          vector.setY(vector.getY() / SBAConfig.getInstance().node(configPath, "reduce-y").getDouble(2.0));
+
+          if (!Double.isFinite(vector.getY())) vector.setY(0);
+          if (!Double.isFinite(vector.getX())) vector.setX(0);
+          if (!Double.isFinite(vector.getZ())) vector.setZ(0);
+
+          vector.multiply(SBAConfig.getInstance().node(configPath, "launch-multiplier").getDouble(4.0));
+
+          if (entity instanceof Player) {
+            final
+            var player = (Player) entity;
+            if (player.getGameMode() == GameMode.SPECTATOR || !Main.isPlayerInGame(player)) {
+              return;
             }
-        }.runTaskTimer(SBA.getPluginInstance(), 20, 10);
+
+            AntiCheatIntegration.getInstance().beginTntJump(player);
+            player.setVelocity(vector.add(player.getVelocity()));
+
+            playerJumpType.put(player, configPath);
+            explosionAffectedTasks.put(player, startTask(player));
+            return;
+          }
+
+          if (Main.getInstance().isEntityInGame(entity)) {
+            entity.setVelocity(vector);
+          }
+        });
     }
+  }
+
+  public BukkitTask startTask(Player player) {
+    BukkitTask previousTask = explosionAffectedTasks.get(player);
+    if (previousTask != null)
+      previousTask.cancel();
+    return new BukkitRunnable() {
+      boolean onGround = false;
+      int count = 0;
+
+      @Override
+      public void run() {
+        if (player.isOnGround()) {
+          onGround = true;
+        }
+        if (onGround) {
+          count++;
+        }
+        if (count > 3) {
+          this.cancel();
+          Logger.trace("Landing tnt jump from being on the ground for 1.5sec", player);
+
+          endTntJump(player);
+        }
+      }
+    }.runTaskTimer(SBA.getPluginInstance(), 20, 10);
+  }
 }
