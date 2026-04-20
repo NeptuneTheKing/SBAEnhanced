@@ -180,7 +180,19 @@ public class ShopUtil {
         int protectionLevel = gameStorage.getProtectionLevel(team).orElse(0);
         if (protectionLevel > 0 && canApply(Enchantment.PROTECTION_ENVIRONMENTAL, newItem))
             newItem.addUnsafeEnchantment(Enchantment.PROTECTION_ENVIRONMENTAL, protectionLevel);
-        List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency");
+        if (newItem.getType().name().equals("MACE")) {
+            int densityLevel = gameStorage.getEnchantLevel(team, "density").orElse(0);
+            if (densityLevel > 0) {
+                try {
+                    org.bukkit.NamespacedKey key = org.bukkit.NamespacedKey.minecraft("density");
+                    Enchantment density = Enchantment.getByKey(key);
+                    if (density != null) {
+                        newItem.addUnsafeEnchantment(density, densityLevel);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency", "density");
         SBAConfig.getInstance().upgrades().enchants().keys().forEach(ench -> {
             Optional<Enchantment> ec = Arrays.stream(Enchantment.values())
                     .filter(x -> x.getName().equalsIgnoreCase(ench)||EnchantmentType.of(x).location().path().equalsIgnoreCase(ench))
