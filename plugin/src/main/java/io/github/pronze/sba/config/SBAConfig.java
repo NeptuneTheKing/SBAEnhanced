@@ -196,6 +196,8 @@ public class SBAConfig implements IConfigurator {
                     .key("Sharpness").defValue(1)
                     .key("Protection").defValue(4)
                     .key("Efficiency").defValue(2)
+                    .key("Density").defValue(4)
+                    .key("Thorns").defValue(3)
                     .back()
                     .section("prices")
                     .key("Sharpness-I").defValue(4)
@@ -210,6 +212,13 @@ public class SBAConfig implements IConfigurator {
                     .key("Efficiency-II").defValue(8)
                     .key("Efficiency-III").defValue(12)
                     .key("Efficiency-IV").defValue(16)
+                    .key("Density-I").defValue(4)
+                    .key("Density-II").defValue(8)
+                    .key("Density-III").defValue(16)
+                    .key("Density-IV").defValue(32)
+                    .key("Thorns-I").defValue(4)
+                    .key("Thorns-II").defValue(6)
+                    .key("Thorns-III").defValue(8)
                     .back()
                     .back()
                     .section("date")
@@ -341,11 +350,12 @@ public class SBAConfig implements IConfigurator {
                     .key("chestplate").defValue(false)
                     .key("helmet").defValue(false)
                     .section("enchants")
+                    .key("density").defValue(List.of("MACE"))
                     .key("sharpness").defValue(List.of("SWORD"))
                     .key("efficiency").defValue(List.of("PICK"))
                     .key("knockback").defValue(List.of("SWORD"))
                     .key("protection").defValue(List.of("HELMET", "BOOT", "CHESTPLATE", "LEGGINGS"))
-                    .key("THORNS").defValue(List.of("HELMET", "BOOT", "CHESTPLATE", "LEGGINGS"))
+                    .key("thorns").defValue(List.of("HELMET", "BOOT", "CHESTPLATE", "LEGGINGS"))
                     .back()
                     .back()
                     .section("automatic-protection")
@@ -611,6 +621,10 @@ public class SBAConfig implements IConfigurator {
 
             public List<String> protection() {
                 return getStringList("upgrade-item.enchants.protection");
+            }
+            
+            public List<String> density() {
+            	return getStringList("upgrade-item.enchants.density");
             }
 
             public List<String> efficiency() {
