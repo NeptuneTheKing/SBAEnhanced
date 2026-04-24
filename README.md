@@ -9,6 +9,11 @@ Supported Versions: [1.9.4-26.1]
 
 - Heal Pool range - change the radius in which players recieve the healpool effect
 - Fireball/TNT jumping - now handled and configured seperately
+- New enchantment upgrades
+	* Density
+	* Thorns
+	* Knockback (experimental)
+- Netherite upgrade
 
 ## Snapshot builds
 Tired of waiting for a newer version of SBA to release?, get the latest version from [SBA CI server](https://github.com/boiscljo/SBA/actions/workflows/gradle-publish.yml)
