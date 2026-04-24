@@ -1,7 +1,6 @@
 # SBAEnhanced 
 
-This plugin is an addon to SBA (ScreamingBedwars Addon), which is an addon to ScreamingBedWars Plugin made by ScreamingSandals, it's made to enhance certain elements of SBA such as store,
-player behavior, events, scoreboard and so on. Download SBA plugin directly from the Spigot [Spigot](https://www.spigotmc.org/resources/sba-screaming-bedwars-addon-1-9-4-1-18-2.99149/)
+This plugin is a fork of SBA (ScreamingBedwars Addon). It is made made to enhance certain elements of SBA. Download SBA plugin directly from the Spigot [Spigot](https://www.spigotmc.org/resources/sba-screaming-bedwars-addon-1-9-4-1-18-2.99149/)
 
 Supported Versions: [1.9.4-26.1]
 
@@ -9,11 +8,11 @@ Supported Versions: [1.9.4-26.1]
 
 - Heal Pool range - change the radius in which players recieve the healpool effect
 - Fireball/TNT jumping - now handled and configured seperately
-- New enchantment upgrades
+- New enchantments for upgrade shop
 	* Density
 	* Thorns
 	* Knockback (experimental)
-- Netherite upgrade
+- Diamond to Netherite armor upgrade
 
 ## Snapshot builds
 Tired of waiting for a newer version of SBA to release?, get the latest version from [SBA CI server](https://github.com/boiscljo/SBA/actions/workflows/gradle-publish.yml)
