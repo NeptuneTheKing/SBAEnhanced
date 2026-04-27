@@ -621,6 +621,7 @@ public class SBAStoreInventoryV2 extends AbstractStoreInventory {
                             }
                         }
                         break;
+<<<<<<< HEAD
                     case "netheritearmor":
                         org.bukkit.inventory.PlayerInventory inv = player.getInventory();
                         org.bukkit.inventory.ItemStack[] armor = inv.getArmorContents();
@@ -679,6 +680,8 @@ public class SBAStoreInventoryV2 extends AbstractStoreInventory {
                             }
                         }
                         break;
+=======
+>>>>>>> a8507204b44af19ad9822802511c5fc4ea281d4a
                     case "protection":
                         if (isAdd) {
                             team.getConnectedPlayers().forEach(teamPlayer -> {

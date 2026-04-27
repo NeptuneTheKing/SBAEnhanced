@@ -76,309 +76,316 @@ import java.util.Optional;
 
 import static io.github.pronze.sba.utils.MessageUtils.showErrorMessage;
 
-@Plugin(id = "SBA", authors = { "pronze",
-        "boiscljo" }, loadTime = Plugin.LoadTime.POSTWORLD, version = VersionInfo.VERSION)
+@Plugin(id = "SBA", authors = {
+  "pronze",
+  "boiscljo"
+}, loadTime = Plugin.LoadTime.POSTWORLD, version = VersionInfo.VERSION)
 @PluginDependencies(platform = PlatformType.BUKKIT, dependencies = {
-        "BedWars"
-}, softDependencies = { "PlaceholderAPI", "ViaVersion", "Citizens", "Vulcan", "PerWorldPlugins" })
+  "BedWars"
+}, softDependencies = {
+  "PlaceholderAPI",
+  "ViaVersion",
+  "Citizens",
+  "Vulcan",
+  "PerWorldPlugins"
+})
 @Init(services = {
-        Logger.class,
-        PacketMapper.class,
-        HologramManager.class,
-        HealthIndicatorManager2.class,
-        SimpleInventoriesCore.class,
-        NPCManager.class,
-        UpdateChecker.class,
-        SBAConfig.class,
-        LanguageService.class,
-        CommandManager.class,
-        ArenaManager.class,
-        PartyManager.class,
-        GameTaskManager.class,
-        SBAStoreInventoryV2.class,
-        GamesInventory.class,
-        PlayerWrapperService.class,
-        GamesInventoryService.class,
-        HealthIndicatorService.class,
-        PacketListener.class,
-        DateUtils.class,
-        BedWarsListener.class,
-        GameChatListener.class,
-        PartyListener.class,
-        PlayerListener.class,
-        GeneratorSplitterListener.class,
-        ExplosionVelocityControlListener.class,
-        LobbyScoreboardManager.class,
-        MainLobbyVisualsManager.class,
-        DynamicSpawnerLimiterService.class,
-        BedwarsCustomMessageModifierListener.class,
-        BridgeEggListener.class,
-        PopupTowerListener.class,
-        NPCStoreService.class,
-        FirstStartConfigReplacer.class,
-        GameModeListener.class,
-        SpawnerProtection.class,
-        SpawnerProtectionListener.class,
-        SidebarManager.class,
-        AntiCheatIntegration.class,
-        QuickBuyConfig.class
+  Logger.class,
+  PacketMapper.class,
+  HologramManager.class,
+  HealthIndicatorManager2.class,
+  SimpleInventoriesCore.class,
+  NPCManager.class,
+  UpdateChecker.class,
+  SBAConfig.class,
+  LanguageService.class,
+  CommandManager.class,
+  ArenaManager.class,
+  PartyManager.class,
+  GameTaskManager.class,
+  SBAStoreInventoryV2.class,
+  GamesInventory.class,
+  PlayerWrapperService.class,
+  GamesInventoryService.class,
+  HealthIndicatorService.class,
+  PacketListener.class,
+  DateUtils.class,
+  BedWarsListener.class,
+  GameChatListener.class,
+  PartyListener.class,
+  PlayerListener.class,
+  GeneratorSplitterListener.class,
+  ExplosionVelocityControlListener.class,
+  LobbyScoreboardManager.class,
+  MainLobbyVisualsManager.class,
+  DynamicSpawnerLimiterService.class,
+  BedwarsCustomMessageModifierListener.class,
+  BridgeEggListener.class,
+  PopupTowerListener.class,
+  NPCStoreService.class,
+  FirstStartConfigReplacer.class,
+  GameModeListener.class,
+  SpawnerProtection.class,
+  SpawnerProtectionListener.class,
+  SidebarManager.class,
+  AntiCheatIntegration.class,
+  QuickBuyConfig.class
 })
 public class SBA implements AddonAPI {
 
-    private static SBA instance;
-    public static boolean sbw_0_2_30;
-    private List<BaseFix> fixs;
-    public CitizensFix citizensFix ;
+  private static SBA instance;
+  public static boolean sbw_0_2_30;
+  private List < BaseFix > fixs;
+  public CitizensFix citizensFix;
 
-    public static SBA getInstance() {
-        return instance;
+  public static SBA getInstance() {
+    return instance;
+  }
+
+  private JavaPlugin cachedPluginInstance;
+  private org.screamingsandals.lib.plugin.Plugin pluginDescription;
+  private final List < Listener > registeredListeners = new ArrayList < > ();
+  private Metrics metrics;
+
+  public SBA(JavaPlugin cachedPluginInstance, org.screamingsandals.lib.plugin.Plugin pluginDescription) {
+    this.cachedPluginInstance = cachedPluginInstance;
+    this.pluginDescription = pluginDescription;
+  }
+
+  public static JavaPlugin getPluginInstance() {
+    if (instance == null) {
+      throw new UnsupportedOperationException("SBA has not yet been initialized!");
+    }
+    return instance.cachedPluginInstance;
+  }
+
+  @OnEnable
+  public void enable() {
+    instance = this;
+
+    if (Main.getVersionNumber() < 109) {
+      //showErrorMessage("Minecraft server is running versions below 1.9.4, please upgrade!");
+      //Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
+      //return;
+    }
+    fixs = new ArrayList < > ();
+    fixs.add(BungeecordNPC.getInstance());
+    fixs.add(new MohistFix());
+    fixs.add(new ViaVersionFix());
+    fixs.add(new MagmaFix());
+    fixs.add(new PerWorldPluginFix());
+    fixs.add(new WoolFix());
+    fixs.add(new SLib203Fix());
+    fixs.add(citizensFix = new CitizensFix());
+
+    for (BaseFix fix: fixs) {
+      fix.detect();
+      if (fix.IsCritical())
+        broken = true;
     }
 
-    private JavaPlugin cachedPluginInstance;
-    private org.screamingsandals.lib.plugin.Plugin pluginDescription;
-    private final List<Listener> registeredListeners = new ArrayList<>();
-    private Metrics metrics;
+    ScoreboardManager.init(cachedPluginInstance);
 
-    public SBA(JavaPlugin cachedPluginInstance, org.screamingsandals.lib.plugin.Plugin pluginDescription) {
-        this.cachedPluginInstance = cachedPluginInstance;
-        this.pluginDescription = pluginDescription;
+    int pluginId = 14804; // <-- Replace with the id of your plugin!
+    metrics = new Metrics(cachedPluginInstance, pluginId);
+  }
+
+  @OnPostEnable
+  public void postEnable() {
+
+    if (Bukkit.getServer().getServicesManager().getRegistration(BedwarsAPI.class) == null) {
+      showErrorMessage("Could not find Screaming-BedWars plugin!, make sure " +
+        "you have the right one installed, and it's enabled properly!");
+      Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
+      return;
+    } else {
+      Logger.info("SBA initialized using Bedwars {}", BedwarsAPI.getInstance().getPluginVersion());
+      if (!BedwarsAPI.getInstance().getPluginVersion().startsWith("0.2")) {
+        Logger.error("SBA only support Bedwars version 2");
+        Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
+        return;
+      }
+      if (!List.of("0.2.29", "0.2.30", "0.2.31",
+          "0.2.31", "0.2.32", "0.2.32.1").stream()
+        .anyMatch(BedwarsAPI.getInstance().getPluginVersion()::equals)) {
+        Logger.warn(
+          "SBA hasn't been tested on this version of Bedwars. If you encounter bugs, use version 0.2.29 to 0.2.32.1. ");
+      }
+      sbw_0_2_30 = Integer.parseInt(BedwarsAPI.getInstance().getPluginVersion().split("[.-]")[2]) >= 30;
+    }
+    for (BaseFix fix: fixs) {
+      fix.fix(SBAConfig.getInstance());
+      if (fix.IsProblematic())
+        fix.warn();
+      if (fix.IsCritical()) {
+        broken = true;
+      }
+    }
+    if (!broken) {
+      InventoryListener.init(cachedPluginInstance);
+
+      if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+        Logger.trace("Registering SBAExpansion...");
+        new SBAExpansion().register();
+      }
     }
 
-    public static JavaPlugin getPluginInstance() {
-        if (instance == null) {
-            throw new UnsupportedOperationException("SBA has not yet been initialized!");
+    Logger.info("Plugin has finished loading!");
+    registerAPI();
+    Logger.info("SBA Initialized on JAVA {}", System.getProperty("java.version"));
+    Logger.info("SBA Commit is on par with {}", VersionInfo.COMMIT);
+    Logger.trace("API has been registered!");
+
+    HologramManager.setPreferDisplayEntities(Main.getConfigurator().config.getBoolean("prefer-1-19-4-display-entities"));
+
+    Logger.setMode(Level.WARNING);
+    if (!broken) {
+      if (citizensFix.canEnable()) {
+        CitizensTraits.enableCitizensTraits();
+      }
+    }
+
+    if (broken) {
+      new BukkitRunnable() {
+        public void run() {
+          Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
         }
-        return instance.cachedPluginInstance;
+      }.runTaskLater(getJavaPlugin(), 20);
+    }
+  }
+
+  private static class CitizensTraits {
+
+    private static void enableCitizensTraits() {
+      if (net.citizensnpcs.api.CitizensAPI.getTraitFactory().getTrait("SBAHologramTrait") == null) {
+        net.citizensnpcs.api.CitizensAPI.getTraitFactory()
+          .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(HologramTrait.class)
+            .withName("SBAHologramTrait"));
+        net.citizensnpcs.api.CitizensAPI.getTraitFactory()
+          .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(ReturnToStoreTrait.class)
+            .withName("ReturnToStoreTrait"));
+        net.citizensnpcs.api.CitizensAPI.getTraitFactory()
+          .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(FakeDeathTrait.class)
+            .withName("FakeDeathTrait"));
+
+        AIService aiService = new AIService();
+        aiService.onPostEnabled();
+      }
     }
 
-    @OnEnable
-    public void enable() {
-        instance = this;
+  }
 
-        if (Main.getVersionNumber() < 109) {
-            //showErrorMessage("Minecraft server is running versions below 1.9.4, please upgrade!");
-            //Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
-            //return;
-        }
-        fixs = new ArrayList<>();
-        fixs.add(BungeecordNPC.getInstance());
-        fixs.add(new MohistFix());
-        fixs.add(new ViaVersionFix());
-        fixs.add(new MagmaFix());
-        fixs.add(new PerWorldPluginFix());
-        fixs.add(new WoolFix());
-        fixs.add(new SLib203Fix());
-        fixs.add(citizensFix=new CitizensFix());
-
-        for (BaseFix fix : fixs) {
-            fix.detect();
-            if (fix.IsCritical())
-                broken = true;
-        }
-
-        ScoreboardManager.init(cachedPluginInstance);
-
-        int pluginId = 14804; // <-- Replace with the id of your plugin!
-        metrics = new Metrics(cachedPluginInstance, pluginId);
+  public void registerListener(@NotNull Listener listener) {
+    if (registeredListeners.contains(listener)) {
+      return;
     }
+    Bukkit.getServer().getPluginManager().registerEvents(listener, getPluginInstance());
+    Logger.trace("Registered listener: {}", listener.getClass().getSimpleName());
+  }
 
-    @OnPostEnable
-    public void postEnable() {
-
-        if (Bukkit.getServer().getServicesManager().getRegistration(BedwarsAPI.class) == null) {
-            showErrorMessage("Could not find Screaming-BedWars plugin!, make sure " +
-                    "you have the right one installed, and it's enabled properly!");
-            Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
-            return;
-        } else {
-            Logger.info("SBA initialized using Bedwars {}", BedwarsAPI.getInstance().getPluginVersion());
-            if (!BedwarsAPI.getInstance().getPluginVersion().startsWith("0.2")) {
-                Logger.error("SBA only support Bedwars version 2");
-                Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
-                return;
-            }
-            if (!List.of("0.2.29", "0.2.30", "0.2.31",
-                            "0.2.31", "0.2.32", "0.2.32.1").stream()
-                    .anyMatch(BedwarsAPI.getInstance().getPluginVersion()::equals)) {
-                Logger.warn(
-                        "SBA hasn't been tested on this version of Bedwars. If you encounter bugs, use version 0.2.29 to 0.2.32.1. ");
-            }
-            sbw_0_2_30 = Integer.parseInt(BedwarsAPI.getInstance().getPluginVersion().split("[.-]")[2]) >= 30;
-        }
-        for (BaseFix fix : fixs) {
-            fix.fix(SBAConfig.getInstance());
-            if (fix.IsProblematic())
-                fix.warn();
-            if (fix.IsCritical()) {
-                broken = true;
-            }
-        }
-        if (!broken) {
-            InventoryListener.init(cachedPluginInstance);
-
-            if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-                Logger.trace("Registering SBAExpansion...");
-                new SBAExpansion().register();
-            }
-        }
-
-        Logger.info("Plugin has finished loading!");
-        registerAPI();
-        Logger.info("SBA Initialized on JAVA {}", System.getProperty("java.version"));
-        Logger.info("SBA Commit is on par with {}", VersionInfo.COMMIT);
-        Logger.trace("API has been registered!");
-
-        HologramManager.setPreferDisplayEntities(Main.getConfigurator().config.getBoolean("prefer-1-19-4-display-entities"));
-
-        Logger.setMode(Level.WARNING);
-        if (!broken) {
-            if (citizensFix.canEnable()) {
-                CitizensTraits.enableCitizensTraits();
-            }
-        }
-
-        if(broken)
-        {
-            new BukkitRunnable(){
-                public void run(){
-                    Bukkit.getServer().getPluginManager().disablePlugin(getPluginInstance());
-                }
-            }.runTaskLater(getJavaPlugin(),20);
-        }
+  public void unregisterListener(@NotNull Listener listener) {
+    if (!registeredListeners.contains(listener)) {
+      return;
     }
+    HandlerList.unregisterAll(listener);
+    registeredListeners.remove(listener);
+    Logger.trace("Unregistered listener: {}", listener.getClass().getSimpleName());
+  }
 
-    private static class CitizensTraits {
+  public List < Listener > getRegisteredListeners() {
+    return List.copyOf(registeredListeners);
+  }
 
-        private static void enableCitizensTraits() {
-            if (net.citizensnpcs.api.CitizensAPI.getTraitFactory().getTrait("SBAHologramTrait") == null) {
-                net.citizensnpcs.api.CitizensAPI.getTraitFactory()
-                        .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(HologramTrait.class)
-                                .withName("SBAHologramTrait"));
-                net.citizensnpcs.api.CitizensAPI.getTraitFactory()
-                        .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(ReturnToStoreTrait.class)
-                                .withName("ReturnToStoreTrait"));
-                net.citizensnpcs.api.CitizensAPI.getTraitFactory()
-                        .registerTrait(net.citizensnpcs.api.trait.TraitInfo.create(FakeDeathTrait.class)
-                                .withName("FakeDeathTrait"));
-
-                AIService aiService = new AIService();
-                aiService.onPostEnabled();
-            }
-        }
-
+  private void registerAPI() {
+    if (Bukkit.getServer().getServicesManager().getRegistration(AddonAPI.class) == null) {
+      Bukkit.getServer().getServicesManager().register(AddonAPI.class, this, cachedPluginInstance,
+        ServicePriority.Normal);
     }
+  }
 
-    public void registerListener(@NotNull Listener listener) {
-        if (registeredListeners.contains(listener)) {
-            return;
-        }
-        Bukkit.getServer().getPluginManager().registerEvents(listener, getPluginInstance());
-        Logger.trace("Registered listener: {}", listener.getClass().getSimpleName());
-    }
+  @OnDisable
+  public void disable() {
+    EventManager.getDefaultEventManager().unregisterAll();
+    EventManager.getDefaultEventManager().destroy();
+    Bukkit.getServer().getServicesManager().unregisterAll(getPluginInstance());
+  }
 
-    public void unregisterListener(@NotNull Listener listener) {
-        if (!registeredListeners.contains(listener)) {
-            return;
-        }
-        HandlerList.unregisterAll(listener);
-        registeredListeners.remove(listener);
-        Logger.trace("Unregistered listener: {}", listener.getClass().getSimpleName());
-    }
+  @Override
+  public Optional < IGameStorage > getGameStorage(Game game) {
+    return ArenaManager.getInstance().getGameStorage(game.getName());
+  }
 
-    public List<Listener> getRegisteredListeners() {
-        return List.copyOf(registeredListeners);
-    }
+  @Override
+  public SBAPlayerWrapper getPlayerWrapper(Player player) {
+    return PlayerWrapperService.getInstance().get(player)
+      .orElseGet(() -> Players.wrapPlayer(player).as(SBAPlayerWrapper.class));
+  }
 
-    private void registerAPI() {
-        if (Bukkit.getServer().getServicesManager().getRegistration(AddonAPI.class) == null) {
-            Bukkit.getServer().getServicesManager().register(AddonAPI.class, this, cachedPluginInstance,
-                    ServicePriority.Normal);
-        }
-    }
+  @Override
+  public boolean isDebug() {
+    return SBAConfig.getInstance().getBoolean("debug.enabled", false);
+  }
 
-    @OnDisable
-    public void disable() {
-        EventManager.getDefaultEventManager().unregisterAll();
-        EventManager.getDefaultEventManager().destroy();
-        Bukkit.getServer().getServicesManager().unregisterAll(getPluginInstance());
-    }
+  @Override
+  public boolean isSnapshot() {
+    return getVersion().contains("SNAPSHOT") || getVersion().contains("dev");
+  }
 
-    @Override
-    public Optional<IGameStorage> getGameStorage(Game game) {
-        return ArenaManager.getInstance().getGameStorage(game.getName());
-    }
+  @Override
+  public String getVersion() {
+    return pluginDescription.version();
+  }
 
-    @Override
-    public SBAPlayerWrapper getPlayerWrapper(Player player) {
-        return PlayerWrapperService.getInstance().get(player)
-                .orElseGet(() -> Players.wrapPlayer(player).as(SBAPlayerWrapper.class));
-    }
+  @Override
+  public IArenaManager getArenaManager() {
+    return ArenaManager.getInstance();
+  }
 
-    @Override
-    public boolean isDebug() {
-        return SBAConfig.getInstance().getBoolean("debug.enabled", false);
-    }
+  @Override
+  public IPartyManager getPartyManager() {
+    return PartyManager.getInstance();
+  }
 
-    @Override
-    public boolean isSnapshot() {
-        return getVersion().contains("SNAPSHOT") || getVersion().contains("dev");
-    }
+  @Override
+  public WrapperService < Player, SBAPlayerWrapper > getPlayerWrapperService() {
+    return PlayerWrapperService.getInstance();
+  }
 
-    @Override
-    public String getVersion() {
-        return pluginDescription.version();
-    }
+  @Override
+  public IConfigurator getConfigurator() {
+    return SBAConfig.getInstance();
+  }
 
-    @Override
-    public IArenaManager getArenaManager() {
-        return ArenaManager.getInstance();
-    }
+  @Override
+  public boolean isPendingUpgrade() {
+    return !getVersion().equalsIgnoreCase(SBAConfig.getInstance().node("version").getString());
+  }
 
-    @Override
-    public IPartyManager getPartyManager() {
-        return PartyManager.getInstance();
-    }
+  @Override
+  public ILanguageService getLanguageService() {
+    return LanguageService.getInstance();
+  }
 
-    @Override
-    public WrapperService<Player, SBAPlayerWrapper> getPlayerWrapperService() {
-        return PlayerWrapperService.getInstance();
-    }
+  @Override
+  public JavaPlugin getJavaPlugin() {
+    return instance.cachedPluginInstance;
+  }
 
-    @Override
-    public IConfigurator getConfigurator() {
-        return SBAConfig.getInstance();
-    }
+  public static org.bukkit.plugin.Plugin getBedwarsPlugin() {
+    return Bukkit.getPluginManager().getPlugin("BedWars");
+  }
 
-    @Override
-    public boolean isPendingUpgrade() {
-        return !getVersion().equalsIgnoreCase(SBAConfig.getInstance().node("version").getString());
-    }
+  public boolean isPendingUpdate() {
+    return UpdateChecker.getInstance().isPendingUpdate();
+  }
 
-    @Override
-    public ILanguageService getLanguageService() {
-        return LanguageService.getInstance();
-    }
+  public void update(@NotNull CommandSender sender) {
+    UpdateChecker.getInstance().update(sender);
+  }
 
-    @Override
-    public JavaPlugin getJavaPlugin() {
-        return instance.cachedPluginInstance;
-    }
+  private static boolean broken = false;
 
-    public static org.bukkit.plugin.Plugin getBedwarsPlugin() {
-        return Bukkit.getPluginManager().getPlugin("BedWars");
-    }
-
-    public boolean isPendingUpdate() {
-        return UpdateChecker.getInstance().isPendingUpdate();
-    }
-
-    public void update(@NotNull CommandSender sender) {
-        UpdateChecker.getInstance().update(sender);
-    }
-
-    private static boolean broken = false;
-
-    public static boolean isBroken() {
-        return broken;
-    }
+  public static boolean isBroken() {
+    return broken;
+  }
 }
