@@ -89,6 +89,9 @@ public class SBAStoreInventoryV2 extends AbstractStoreInventory {
                         efficiencyPrices.add(value);
                     } else if (castedKey.startsWith("knockback")) {
                         knockbackPrices.add(value);
+                    } else if (castedKey.startsWith("density")) {
+                    	otherPrices.computeIfAbsent("density", k -> new ArrayList<>());
+                        otherPrices.get("density").add(value);
                     } else {
                         final var otherKey = castedKey.split("-", 2)[0];
                         otherPrices.computeIfAbsent(otherKey, k -> new ArrayList<>());
@@ -565,6 +568,113 @@ public class SBAStoreInventoryV2 extends AbstractStoreInventory {
 
                             if (spawnersToUpgrade.isEmpty()) {
                                 messageOnFail.set(MessageKeys.GREATEST_SPAWNER);
+                                shouldSellStack = false;
+                            }
+                        }
+                        break;
+                    case "density":
+                        if (isAdd) {
+                            team.getConnectedPlayers().forEach(teamPlayer -> {
+                                // Using a generic message key or creating a new one in MessageKeys
+                            	Players.wrapPlayer(teamPlayer).sendMessage(org.screamingsandals.lib.spectator.Component.fromLegacy(ChatColor.AQUA + player.getDisplayName() + " upgraded Mace Density!"));
+
+                                Arrays.stream(teamPlayer.getInventory().getContents())
+                                        .filter(Objects::nonNull)
+                                        .filter(item -> item.getType().name().equals("MACE"))
+                                        .forEach(item -> {
+                                            try {
+                                                Enchantment density = Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft("density"));
+                                                if (density != null) {
+                                                    item.addUnsafeEnchantment(density, item.getEnchantmentLevel(density) + levelToAddInt);
+                                                }
+                                            } catch (Exception ignored) {}
+                                        });
+                            });
+                            break;
+                        }
+                        
+                        var teamDensityLevel = gameStorage.getEnchantLevel(team, "density").orElse(0);
+                        var maxDensityLevel = SBAConfig.getInstance().node("upgrades", "limit", "Density").getInt(4);
+                        
+                        if (!otherPrices.containsKey("density") || teamDensityLevel >= otherPrices.get("density").size() || teamDensityLevel >= maxDensityLevel) {
+                            shouldSellStack = false;
+                            messageOnFail.set(MessageKeys.GREATEST_ENCHANTMENT);
+                        } else {
+                            var ePrice = otherPrices.get("density").get(teamDensityLevel);
+                            teamDensityLevel++;
+
+                            materialItem.set(ItemStackFactory.build(type.getStack(ePrice)));
+
+                            if (player.getInventory().containsAtLeast(materialItem.get().as(ItemStack.class), ePrice)) {
+                                gameStorage.setEnchantLevel(team, "density", teamDensityLevel);
+                                
+                                final int finalLevel = teamDensityLevel;
+                                team.getConnectedPlayers().forEach(teamPlayer -> {
+                                	Players.wrapPlayer(teamPlayer).sendMessage(org.screamingsandals.lib.spectator.Component.fromLegacy(ChatColor.AQUA + player.getDisplayName() + " upgraded Mace Density to Level " + finalLevel + "!"));
+                                    
+                                    Arrays.stream(teamPlayer.getInventory().getContents())
+                                            .filter(Objects::nonNull)
+                                            .forEach(item -> ShopUtil.applyTeamEnchants(teamPlayer, item));
+                                });
+                            } else {
+                                shouldSellStack = false;
+                            }
+                        }
+                        break;
+                    case "netheritearmor":
+                        org.bukkit.inventory.PlayerInventory inv = player.getInventory();
+                        org.bukkit.inventory.ItemStack[] armor = inv.getArmorContents();
+                        boolean upgraded = false;
+
+                        for (int i = 0; i < armor.length; i++) {
+                            if (armor[i] != null && armor[i].getType().name().contains("DIAMOND_")) {
+                                String targetType = armor[i].getType().name().replace("DIAMOND_", "NETHERITE_");
+                                org.bukkit.Material netheriteMat = org.bukkit.Material.getMaterial(targetType);
+                                
+                                if (netheriteMat != null) {
+                                    armor[i].setType(netheriteMat);
+                                    upgraded = true;
+                                }
+                            }
+                        }
+
+                        if (upgraded) {
+                            inv.setArmorContents(armor);
+                            Players.wrapPlayer(player).sendMessage(org.screamingsandals.lib.spectator.Component.fromLegacy(ChatColor.GREEN + "Your Diamond armor has been upgraded to Netherite!"));
+                        } else {
+                            Players.wrapPlayer(player).sendMessage(org.screamingsandals.lib.spectator.Component.fromLegacy(ChatColor.RED + "You must be wearing Diamond armor to upgrade it!"));
+                            shouldSellStack = false; 
+                        }
+                        break;
+                    case "thorns":
+                        var teamThornsLevel = gameStorage.getEnchantLevel(team, "thorns").orElse(0);
+                        // You can set the max level here (e.g., Thorns III)
+                        var maxThornsLevel = SBAConfig.getInstance().node("upgrades", "limit", "Thorns").getInt(3);
+
+                        if (!otherPrices.containsKey("thorns") || teamThornsLevel >= otherPrices.get("thorns").size() || teamThornsLevel >= maxThornsLevel) {
+                            shouldSellStack = false;
+                            messageOnFail.set(MessageKeys.GREATEST_ENCHANTMENT);
+                        } else {
+                            var thornsPrice = otherPrices.get("thorns").get(teamThornsLevel);
+                            teamThornsLevel++;
+
+                            materialItem.set(ItemStackFactory.build(type.getStack(thornsPrice)));
+
+                            if (player.getInventory().containsAtLeast(materialItem.get().as(ItemStack.class), thornsPrice)) {
+                                gameStorage.setEnchantLevel(team, "thorns", teamThornsLevel);
+                                
+                                final int finalThornsLevel = teamThornsLevel;
+                                team.getConnectedPlayers().forEach(teamPlayer -> {
+                                    Players.wrapPlayer(teamPlayer).sendMessage(org.screamingsandals.lib.spectator.Component.fromLegacy(
+                                        ChatColor.AQUA + player.getDisplayName() + " upgraded Thorns to Level " + finalThornsLevel + "!"
+                                    ));
+                                    
+                                    // Instantly update all armor currently worn by teammates
+                                    Arrays.stream(teamPlayer.getInventory().getArmorContents())
+                                            .filter(Objects::nonNull)
+                                            .forEach(item -> ShopUtil.applyTeamEnchants(teamPlayer, item));
+                                });
+                            } else {
                                 shouldSellStack = false;
                             }
                         }

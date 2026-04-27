@@ -167,20 +167,43 @@ public class ShopUtil {
 
         final var typeName = newItem.getType().name();
         final var team = game.getTeamOfPlayer(player);
+        
+        if (newItem.getType().name().contains("DIAMOND_")) {
+            int netheriteLevel = gameStorage.getEnchantLevel(team, "netheritearmor").orElse(0);
+            if (netheriteLevel > 0) {
+                String netheriteName = newItem.getType().name().replace("DIAMOND_", "NETHERITE_");
+                org.bukkit.Material netheriteMat = org.bukkit.Material.getMaterial(netheriteName);
+                if (netheriteMat != null) {
+                    newItem.setType(netheriteMat);
+                }
+            }
+        }
 
         int sharpnessLevel = gameStorage.getSharpnessLevel(team).orElse(0);
         if (sharpnessLevel > 0 && canApply(Enchantment.DAMAGE_ALL, newItem))
             newItem.addUnsafeEnchantment(Enchantment.DAMAGE_ALL, sharpnessLevel);
-        int knockbackLebel = gameStorage.getKnockbackLevel(team).orElse(0);
-        if (knockbackLebel > 0 && canApply(Enchantment.KNOCKBACK, newItem))
-            newItem.addUnsafeEnchantment(Enchantment.KNOCKBACK, knockbackLebel);
+        int knockbackLevel = gameStorage.getKnockbackLevel(team).orElse(0);
+        if (knockbackLevel > 0 && canApply(Enchantment.KNOCKBACK, newItem))
+            newItem.addUnsafeEnchantment(Enchantment.KNOCKBACK, knockbackLevel);
         int efficiencyLevel = gameStorage.getEfficiencyLevel(team).orElse(0);
         if (efficiencyLevel > 0 && canApply(Enchantment.DIG_SPEED, newItem))
             newItem.addUnsafeEnchantment(Enchantment.DIG_SPEED, efficiencyLevel);
         int protectionLevel = gameStorage.getProtectionLevel(team).orElse(0);
         if (protectionLevel > 0 && canApply(Enchantment.PROTECTION_ENVIRONMENTAL, newItem))
             newItem.addUnsafeEnchantment(Enchantment.PROTECTION_ENVIRONMENTAL, protectionLevel);
-        List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency");
+        if (newItem.getType().name().equals("MACE")) {
+            int densityLevel = gameStorage.getEnchantLevel(team, "density").orElse(0);
+            if (densityLevel > 0) {
+                try {
+                    org.bukkit.NamespacedKey key = org.bukkit.NamespacedKey.minecraft("density");
+                    Enchantment density = Enchantment.getByKey(key);
+                    if (density != null) {
+                        newItem.addUnsafeEnchantment(density, densityLevel);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency", "density", "netheritearmor");
         SBAConfig.getInstance().upgrades().enchants().keys().forEach(ench -> {
             Optional<Enchantment> ec = Arrays.stream(Enchantment.values())
                     .filter(x -> x.getName().equalsIgnoreCase(ench)||EnchantmentType.of(x).location().path().equalsIgnoreCase(ench))
