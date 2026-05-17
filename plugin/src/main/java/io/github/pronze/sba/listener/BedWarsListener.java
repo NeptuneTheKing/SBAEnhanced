@@ -669,5 +669,43 @@ public class BedWarsListener implements Listener {
                     }
                 });
     }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBoundaryBlockPlaceBypass(org.bukkit.event.block.BlockPlaceEvent event) {
+        if (!Main.isPlayerInGame(event.getPlayer()))
+            return;
 
+        final var game = Main.getInstance().getGameOfPlayer(event.getPlayer());
+        if (game == null) return;
+
+        // If the block is in the match world but cancelled by the core engine boundary checks
+        if (event.getBlock().getWorld().equals(game.getWorld())) {
+            if (event.isCancelled()) {
+                event.setCancelled(false); // Override the core boundary restriction
+            }
+            
+            // CRITICAL: Register the block into the core game engine tracking map 
+            // even if it's placed outside the map vectors so players can break it.
+            try {
+                game.getRegion().addPlacedBlock(event.getBlock().getLocation());
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBoundaryBlockBreakBypass(org.bukkit.event.block.BlockBreakEvent event) {
+        if (!Main.isPlayerInGame(event.getPlayer()))
+            return;
+
+        final var game = Main.getInstance().getGameOfPlayer(event.getPlayer());
+        if (game == null) return;
+
+        // Allow breaking any player-placed block anywhere in the match world
+        if (event.getBlock().getWorld().equals(game.getWorld())) {
+            try {
+                if (game.getRegion().isBlockPlacedByPlayer(event.getBlock().getLocation())) {
+                    event.setCancelled(false); // Override boundary restriction for breaking
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
 }

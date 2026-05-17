@@ -537,4 +537,25 @@ public class PlayerListener implements Listener {
             }
         }
     }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBoundaryInteractBypass(PlayerInteractEvent event) {
+        if (!Main.isPlayerInGame(event.getPlayer()))
+            return;
+
+        if (event.isCancelled() && event.getItem() != null) {
+            // DO NOT un-cancel if the item is an active Bridge Egg or Popup Tower module
+            org.bukkit.inventory.ItemStack item = event.getItem();
+            if (org.screamingsandals.bedwars.api.APIUtils.unhashFromInvisibleStringStartsWith(item, "Module:BridgeEgg:") != null ||
+                org.screamingsandals.bedwars.api.APIUtils.unhashFromInvisibleStringStartsWith(item, "Module:PopupTower:") != null) {
+                return; 
+            }
+
+            final var game = Main.getInstance().getGameOfPlayer(event.getPlayer());
+            if (game == null) return;
+
+            if (event.getPlayer().getWorld().equals(game.getWorld())) {
+                event.setCancelled(false);
+            }
+        }
+    }
 }

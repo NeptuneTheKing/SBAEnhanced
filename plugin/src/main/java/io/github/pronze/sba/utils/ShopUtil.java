@@ -203,11 +203,10 @@ public class ShopUtil {
                 } catch (Exception ignored) {}
             }
         }
-<<<<<<< HEAD
+//<<<<<<< HEAD
         List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency", "density", "netheritearmor");
-=======
-        List<String> ignoredKeys = List.of("sharpness", "knockback", "protection", "efficiency", "density");
->>>>>>> a8507204b44af19ad9822802511c5fc4ea281d4a
+//=======;
+//>>>>>>> a8507204b44af19ad9822802511c5fc4ea281d4a
         SBAConfig.getInstance().upgrades().enchants().keys().forEach(ench -> {
             Optional<Enchantment> ec = Arrays.stream(Enchantment.values())
                     .filter(x -> x.getName().equalsIgnoreCase(ench)||EnchantmentType.of(x).location().path().equalsIgnoreCase(ench))
